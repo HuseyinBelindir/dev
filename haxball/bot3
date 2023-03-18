@@ -1,0 +1,1197 @@
+var roomName = "HMI POWER V3 HP";
+var maxPlayers = 10;
+var roomPublic = false;
+var playerName = "HMI";
+var noPlayer = false; //false = Bot İs invisible - true = Bot İs Visible (False Recomended)
+const geo = [
+    { code: 'TR', lat: 40.9, lon: 29.1 },
+    { code: 'FR', lat: 46.2, lon: 2.2 },
+    { code: 'PL', lat: 51.9, lon: 19.1 },
+    { code: 'GB', lat: 55.3, lon: -3.4 },
+    { code: 'PT', lat: 39.3, lon: -8.2 },
+];
+var redTeam = ["","","","","",""];
+var blueTeam = ["","","","","",""];
+var auth;
+var previousPositionsX = [];
+var previousPositionsY = [];
+var playerMoving = false;
+var stats = [0,0,0,0,0,0,0,"name",0]// stats[0] = total games, stats[1] = wins, stats[2] = loses, stats[3] = goals, stats[4] = own goal, stats[5] = point, stats[6] = signed, stats[7] player.name, stats[8] = 0: noban - 1: banned
+var ballOut2 = true;
+var trainingMap = false;
+var exitingPos = null;
+var ballOut = true;
+var redZero = undefined;
+var blueZero = undefined;
+var specZero = undefined;
+var lastCall2;
+var lastScores = 0;
+var slowModeTime = 5;//slow chat mode time (seconds)
+var backMSG = false;
+var bigMap = false;
+var classicMap = false;
+var room = HBInit({ roomName: roomName, maxPlayers: maxPlayers, public: roomPublic, playerName: playerName, geo:geo[0],noPlayer:noPlayer });
+var visible = "";
+room.setTeamsLock(true);
+room.setScoreLimit(0);
+room.setTimeLimit(0);
+var redStreak = 0;//win streak's of red team
+var blueStreak = 0;//win streak's of blue team
+var point = [
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+];
+var lastCall;
+var lastTeamTouched = 0;
+
+/* SETTINGS */
+
+var triggerDistance = radiusBall + 15 + 0.01;
+var outLineY = stadiumWidth - (radiusBall / 2) + 6;
+stadiumWidth += (radiusBall / 2) + 6;
+stadiumHeight += (radiusBall / 2) + 6;
+var abuser = 0;
+var lastPlayerTouched;
+var ballSpeed;
+var SlowMode = [];
+var real = false;
+var kickOff = false;
+var playersAfk = {};
+var afkPlayerIDs = new Set();
+var afkListForChat = [];
+var PlayerList = [];
+var blockedWords = ["oç", "oc", "ananı sikeyim", "ananı", "sikim", "skim", "sikm", "skm", "annı", "piç", "pic", "pıc", "pç", "orospu", "oruspu", "orosbu", "orusbu", "göt", "got", "yarram", "yrrm", "yarrağım", "yarragım", "cocu", "amk", "pezevenk", "sik", "sikik", "sikerim", "sikeceğim", "siktiğim", "allahını", "allahsız", "puşt", "amık", "amcık", "taşşak", "taşak", "daşşak", "daşak", "sikeyim", "sikiyim", "siktir", "sikişek", "sikişelim", "orospunun", "orusbunun", "oruspunun", "orosbunun", "orospunun", "amını", "amcığını", "yarrağını", "götünü", "yarak", "yavşak", "avradini", "avradını", "bacını", "bacini", "siktigim", "siktiğim", "siktirlan", "yavsak", "gay", "lezbiyen", "travesti", "gavat", "sikkafa", "aminiyolunu", "fuck", "bitch", "porn", "porno", "sike", "amınakodum", "sikicem", "sikiş", "sik", "sikerler", "sikişik", "amına", "sikişken", "OÇ", "OC", "ANANı SİKEYİM", "AMI", "ANANI", "SİKİM", "SKİM", "SİKM", "SKM", "ANNı", "PİÇ", "PİC", "PİC", "PÇ", "OROSPU", "ORUSPU", "OROSBU", "ORUSBU", "GÖT", "GOT", "GT", "YARRAM", "YRRM", "YARRAĞIM", "YARRAGİM", "PEZEVENK", "SİK", "SİKİK", "SİKERİM", "SİKECEĞİM", "SİKTİĞİM", "ALLAHINI", "ATANI", "ALLAHSIZ", "PUŞT", "AMIK", "AMCIK", "TAŞŞAK", "TAŞAK", "DAŞŞAK", "DAŞAK", "SİKEYİM", "SİKİYİM", "SİKTİR", "SİKİŞEK", "SİKİŞELİM", "OROSPUNUN", "ORUSBUNUN", "ORUSPUNUN", "OROSBUNUN", "OROSPUNUN", "AMİNİ", "AMCİĞİNİ", "YARRAĞİNİ", "GÖTÜNÜ", "YARAK", "YAVŞAK", "AVRADİNİ", "AVRADİNİ", "BACİNİ", "BACİNİ", "SİKTİGİM", "SİKTİĞİM", "SİKTİRLAN", "YAVSAK", "TRAVESTİ", "GAVAT", "SİKKAFA", "AMİNİYOLUNU", "FUCK", "BİTCH", "PORN", "PORNO", "SİKE", "AMİNAKODUM", "SİKİCEM", "SİKİŞ", "SİK", "SİKERLER", "SİKİŞİK", "AMİNA", "SİKİŞKEN", "amın", "AMIN", "amcığın", "AMCIĞIN", "AMCIĞINIZI", "AMCIĞINI", "amcığınızı", "amcığını", "amcıklama", "amık", "AMIK", "evladı", "EVLADI", "amınakoyim", "AMINAKOYİM", "amınoğlu", "AMINOĞLU", "amina", "AMİNA", "amısına", "AMISINA", "ananın", "ANANIN", "ananisikerim", "ANANISİKERİM", "annenin", "ANNENİN", "ANNESİZ", "annesiz", "babanın", "BABANIN", "babanin", "BABANİN", "anan", "ANAN", "s1kerim", "S1KERİM", "s1kerım", "S1KERIM1", "0c", "0C", "oc", "OC", "OÇ", "oç", "0Ç", "0ç", "s.kyim", "S.KYİM", "S.KYIM", "s.kyım"];//Type here the words that you blocked like this  var blockedWords = ["word1","word2","word3"]
+var küfür = ["amk","sg","oç", "oc", "ananı sikeyim", "ananı", "sikim", "skim", "sikm", "skm", "annı", "piç", "pic", "pıc", "pç", "orospu", "oruspu", "orosbu", "orusbu", "göt", "got", "yarram", "yrrm", "yarrağım", "yarragım", "cocu", "amk", "pezevenk", "sik", "sikik", "sikerim", "sikeceğim", "siktiğim", "allahını", "allahsız", "puşt", "amık", "amcık", "taşşak", "taşak", "daşşak", "daşak", "sikeyim", "sikiyim", "siktir", "sikişek", "sikişelim", "orospunun", "orusbunun", "oruspunun", "orosbunun", "orospunun", "amını", "amcığını", "yarrağını", "götünü", "yarak", "yavşak", "avradini", "avradını", "bacını", "bacini", "siktigim", "siktiğim", "siktirlan", "yavsak", "gay", "lezbiyen", "travesti", "gavat", "sikkafa", "aminiyolunu", "fuck", "bitch", "porn", "porno", "sike", "amınakodum", "sikicem", "sikiş", "sik", "sikerler", "sikişik", "amına", "sikişken", "OÇ", "OC", "ANANı SİKEYİM", "AMI", "ANANI", "SİKİM", "SKİM", "SİKM", "SKM", "ANNı", "PİÇ", "PİC", "PİC", "PÇ", "OROSPU", "ORUSPU", "OROSBU", "ORUSBU", "GÖT", "GOT", "GT", "YARRAM", "YRRM", "YARRAĞIM", "YARRAGİM", "PEZEVENK", "SİK", "SİKİK", "SİKERİM", "SİKECEĞİM", "SİKTİĞİM", "ALLAHINI", "ATANI", "ALLAHSIZ", "PUŞT", "AMIK", "AMCIK", "TAŞŞAK", "TAŞAK", "DAŞŞAK", "DAŞAK", "SİKEYİM", "SİKİYİM", "SİKTİR", "SİKİŞEK", "SİKİŞELİM", "OROSPUNUN", "ORUSBUNUN", "ORUSPUNUN", "OROSBUNUN", "OROSPUNUN", "AMİNİ", "AMCİĞİNİ", "YARRAĞİNİ", "GÖTÜNÜ", "YARAK", "YAVŞAK", "AVRADİNİ", "AVRADİNİ", "BACİNİ", "BACİNİ", "SİKTİGİM", "SİKTİĞİM", "SİKTİRLAN", "YAVSAK", "TRAVESTİ", "GAVAT", "SİKKAFA", "AMİNİYOLUNU", "FUCK", "BİTCH", "PORN", "PORNO", "SİKE", "AMİNAKODUM", "SİKİCEM", "SİKİŞ", "SİK", "SİKERLER", "SİKİŞİK", "AMİNA", "SİKİŞKEN", "amın", "AMIN", "amcığın", "AMCIĞIN", "AMCIĞINIZI", "AMCIĞINI", "amcığınızı", "amcığını", "amcıklama", "amık", "AMIK", "evladı", "EVLADI", "amınakoyim", "AMINAKOYİM", "amınoğlu", "AMINOĞLU", "amina", "AMİNA", "amısına", "AMISINA", "ananın", "ANANIN", "ananisikerim", "ANANISİKERİM", "annenin", "ANNENİN", "ANNESİZ", "annesiz", "babanın", "BABANIN", "babanin", "BABANİN", "anan", "ANAN", "s1kerim", "S1KERİM", "s1kerım", "S1KERIM1", "0c", "0C", "oc", "OC", "OÇ", "oç", "0Ç", "0ç", "s.kyim", "S.KYİM", "S.KYIM", "s.kyım"];
+room.onPlayerChat = function(player, message){
+    var mesaj = message;
+    if(mesaj.includes(küfür)){
+    room.sendAnnouncement("Yasaklı sözcük kullandığınız için mesajınız gönderilmedi!");
+    }
+}
+    room.getPlayerList().filter(x => x.admin == true).forEach(p => {
+        room.sendAnnouncement(mesaj, p.id, 0xffffff, "bold",2);
+    });
+    var adminPassword = 1000 + getRandomInt(9000);
+console.log("Admin Password : " + adminPassword);
+var Team = {
+    SPECTATORS: 0,
+    RED: 1,
+    BLUE: 2
+};
+
+var room = HBInit(gameConfig);
+
+//Webhoooks
+var chatLogWebhookURL = "https://discord.com/api/webhooks/1085604265130737755/mCBpWOGb0kAlCTumUbCrUcIMgY52I7XfLtV0tp-w0HwirOaiWZeSLNbdDzdxTbC93IG9";//webhookUrl for sned chat logs to discord (Should Be A Private Discord Channel)
+var adminWebhookURL = "https://discord.com/api/webhooks/1085604193064206488/VPZQlt_KaB4CQ_ba7npWMpKgBCcn1Bz2dq9xwrBcqo09Abs-tZC_XNzXSrXTRKc3tLJb";//webhookurl to sending call for admins (Should Be A Private Discord Channel)
+var sendBanWebhookUrl = "https://discord.com/api/webhooks/1085604111942160444/F6e96G5wyEASLfSBmAXi0QVaR1UV7jmMOfFgDbkBgLVRP17ZFzDrt0hUP3Z7CbwDZgWG";//for sending ban logs to a discord channel(Can Be Private/Public [i Recomend Public])
+var sendRecWebhookURL = "https://discord.com/api/webhooks/1085603982057160826/IZ47fRRjI-eifDcTDwbreCAUpy69RgH2HYwbXmaT10np-UZaUVVR962e7DomMZ4Upd7z";//webhookurl for sending match records to a discord channel(Should Be A Public Discord Channel)
+var sendLinkWebhookURL = "https://discord.com/api/webhooks/1085602529716469931/KmFolea_vuz11fzY2UecJq64xT7RdFSHwN2yCPKNPvyImLuoKq5AnQKp-up4BtTviZyL";//when you started to host the room, with this webhookurl it will send room link to a discord channel
+//colors for "sendAnnouncement"
+var colors = {
+    red: 0xff0000,
+    blue:0x0000ff,
+    orange: 0xFF7F00,
+    pink:0xFFCBDB,
+    purple:0x660099,
+    yellow:0xffff00,
+    green:0x008000,
+    white:0xffffff,
+    brown:0x654321
+}
+//Functions
+function updateAdmins() {
+    // Get all players except the host (id = 0 is always the host)
+    var players = room.getPlayerList().filter((player) => player.id != 0 );
+    if ( players.length == 0 ) return; // No players left, do nothing.
+    if ( players.find((player) => player.admin) != null ) return; // There's an admin left so do nothing.
+    room.setPlayerAdmin(players[0].id, true); // Give admin to the first non admin player in the list
+  }
+function clonekick(player) {
+    players = room.getPlayerList();
+    for (i = 0; i < players.length - 1; i++) {
+        if (player.name == players[i].name) {
+            room.kickPlayer(player.id, "❌Bu İsimde Bir Oyuncu Zaten Var", true);
+        }
+    }
+}
+function getTime(scores) {
+    // returns the current time of the game
+    return (
+        '[' +
+        Math.floor(Math.floor(scores.time / 60) / 10).toString() +
+        Math.floor(Math.floor(scores.time / 60) % 10).toString() +
+        ':' +
+        Math.floor(
+            Math.floor(scores.time - Math.floor(scores.time / 60) * 60) / 10
+        ).toString() +
+        Math.floor(
+            Math.floor(scores.time - Math.floor(scores.time / 60) * 60) % 10
+        ).toString() +
+        ']'
+    );
+}
+var isOwnGoal = (team, player) => team != player.team ? " 😂Kendi kalesine gol" : "";
+function updatePlayersPositions() {
+    let players = room.getPlayerList().filter(player => player.id !== 0);
+    players = players.filter(player => player.team !== 0);
+
+    for (i = 0; i < players.length; i++) {
+        if (players[i].position != null) {
+            let currentPositionYY = players[i].position.y;
+            let currentPositionXX = players[i].position.x;
+            let currentPositionYYShort = currentPositionYY.toFixed(8);
+            let currentPositionXXShort = currentPositionXX.toFixed(8);
+            previousPositionsX[players[i].id] = currentPositionXXShort;
+            previousPositionsY[players[i].id] = currentPositionYYShort;
+        }
+    }
+};
+
+function updateMessage() {
+    let players = room.getPlayerList().filter(player => player.id !== 0);
+    players = players.filter(player => player.team !== 0);
+
+    for (i = 0; i < players.length; i++) {
+        if (players[i].position != null) {
+            let currentPositionY = players[i].position.y;
+            let currentPositionX = players[i].position.x;
+            let currentPositionYShort = currentPositionY.toFixed(8);
+            let currentPositionXShort = currentPositionX.toFixed(8);
+            if (currentPositionYShort != previousPositionsY[players[i].id] || currentPositionXShort != previousPositionsY[players[i].id]) {
+                playerMoving = true;
+                //room.sendChat("x" +currentPositionXShort);
+            } else if (currentPositionYShort == previousPositionsY[players[i].id] && currentPositionXShort == previousPositionsX[players[i].id]) {
+                playerMoving = false;
+                //room.sendChat(playerMoving + " false");
+            }
+        }
+    }
+}
+let updateMessageInterval = setInterval(updateMessage, 1000);
+let updatePlayersPositionsInterval = setInterval(updatePlayersPositions, 300);
+function isOutsideStadium2(ballPosition2) { if (ballPosition2.y < -83.5 || ballPosition2.y > 83.5) { return ballPosition2.x > 700 || ballPosition2.x < -700 || ballPosition2.y > 320 || ballPosition2.y < -320; } }
+
+
+    
+
+
+
+function BallPosition2(e, f, g, h) {
+    for (let i = 0; i <= room.getDiscCount(); i++) {
+        let disc = room.getDiscProperties(i);
+
+        if (disc && disc.radius == 9.9) {
+            room.setDiscProperties(i, { x: e, y: f });
+            room.setDiscProperties(i, { xspeed: g, yspeed: h });
+        }
+    }
+}
+
+
+function setBallColor2(c) {
+    for (let i = 0; i <= room.getDiscCount(); i++) {
+        let disc = room.getDiscProperties(i);
+
+        if (disc && disc.radius == 9.9) {
+            room.setDiscProperties(i, { color: c });
+
+        }
+    }
+}
+function isOutsideStadium(ballPosition) { if (ballPosition.y < -127 || ballPosition.y > 127) { return ballPosition.x > stadiumWidth || ballPosition.x < -stadiumWidth || ballPosition.y > stadiumHeight || ballPosition.y < -stadiumHeight; } }
+
+var isBallOutsideStadium = false;
+
+
+function gameWinned(){
+    stats = JSON.parse(localStorage.getItem(auth));
+    stats[1] += 1;
+    stats[5] += 3;
+    localStorage.setItem(auth, JSON.stringify(stats));
+}
+function gameLosed(){
+    stats = JSON.parse(localStorage.getItem(auth));
+    stats[2] += 1;
+    stats[5] -= 2;
+    localStorage.setItem(auth, JSON.stringify(stats));
+}
+function  sendChatForTeam(str, team) {
+    room.getPlayerList().filter(x => x.team == team || x.admin==true).forEach(p => {
+    room.sendAnnouncement(str, p.id, team == 1 ? 0xFF4640 : (team == 2 ? 0x089CFF : 0x808080), "bold");
+    });
+}
+function pointDistance(p1, p2) {
+    var d1 = p1.x - p2.x;
+    var d2 = p1.y - p2.y;
+    return Math.sqrt(d1 * d1 + d2 * d2);
+}
+function checkBall(){
+    var ballPosition = room.getBallPosition();
+    point[1] = point[0];
+    point[0] = ballPosition;
+    ballSpeed = (pointDistance(point[0], point[1]) * 60 * 60 * 60) / 15000;
+}
+function sendDiscordLink(player) {
+    room.sendAnnouncement("                                        ▒█▀▀▄ ▀█▀ ▒█▀▀▀█ ▒█▀▀█ ▒█▀▀▀█ ▒█▀▀█ ▒█▀▀▄ ", player, 0x9250FD, "normal", 0)
+    room.sendAnnouncement("                                        ▒█░▒█ ▒█░ ░▀▀▀▄▄ ▒█░░░ ▒█░░▒█ ▒█▄▄▀ ▒█░▒█ ", player, 0x8466FD, "normal", 0)
+    room.sendAnnouncement("                                        ▒█▄▄▀ ▄█▄ ▒█▄▄▄█ ▒█▄▄█ ▒█▄▄▄█ ▒█░▒█ ▒█▄▄▀ ", player, 0x7B73FD, "normal", 0);
+    room.sendAnnouncement("                                         Discord Link: ➡ https://discord.gg/F9CwATM3 ⬅", player, 0xF6FF43, "normal", 0);
+}
+function setBallColor(c) {
+    for (let i = 0; i <= room.getDiscCount(); i++) {
+        let disc = room.getDiscProperties(i);
+
+        if (disc && disc.radius == disc.radius) {
+            room.setDiscProperties(0, { color: c });
+
+        }
+    }
+}
+
+function SendBanAnnouncement(byPlayer,banned,reason){
+    //sending ban announcement with an embed message to a discord channel
+    var request = new XMLHttpRequest();
+    request.open("POST", sendBanWebhookUrl);
+    // again, replace the url in the open method with yours
+    request.setRequestHeader('Content-type', 'application/json');
+
+    if(reason == ""){
+        reason = " - "
+    }
+    var myEmbed = {
+    author: {
+        name: "Ban Duyurusu"
+    },
+    title: "🚫Banlı Oyuncu: " + banned.name + " 🚫",
+    description: "Banlayan: " + byPlayer.name + " - Reason: " + reason,
+    color: hexToDecimal("#ff0000")//type here a hex colors that you want (#ff0000 is red)
+}
+
+var params = {
+    username: "⛔️Ban Duyurusu⛔️",
+    embeds: [ myEmbed ]
+}
+
+request.send(JSON.stringify(params));
+
+/* BALANCE & CHOOSE FUNCTIONS */
+/* STADYUM */
+var trainingMap = '{"name":"Classic Training","width":420,"height":200,"spawnDistance":170,"bg":{"type":"grass","width":370,"height":170,"kickOffRadius":75,"cornerRadius":0},"vertexes":[{"x":-370,"y":170,"trait":"ballArea"},{"x":-370,"y":64,"trait":"ballArea"},{"x":-370,"y":-64,"trait":"ballArea"},{"x":-370,"y":-170,"trait":"ballArea"},{"x":370,"y":170,"trait":"ballArea"},{"x":370,"y":64,"trait":"ballArea"},{"x":370,"y":-64,"trait":"ballArea"},{"x":370,"y":-170,"trait":"ballArea"},{"x":0,"y":200,"trait":"kickOffBarrier"},{"x":0,"y":75,"trait":"kickOffBarrier"},{"x":0,"y":-75,"trait":"kickOffBarrier"},{"x":0,"y":-200,"trait":"kickOffBarrier"},{"x":-380,"y":-64,"trait":"goalNet"},{"x":-400,"y":-44,"trait":"goalNet"},{"x":-400,"y":44,"trait":"goalNet"},{"x":-380,"y":64,"trait":"goalNet"},{"x":380,"y":-64,"trait":"goalNet"},{"x":400,"y":-44,"trait":"goalNet"},{"x":400,"y":44,"trait":"goalNet"},{"x":380,"y":64,"trait":"goalNet"}],"segments":[{"v0":0,"v1":1,"trait":"ballArea"},{"v0":2,"v1":3,"trait":"ballArea"},{"v0":4,"v1":5,"trait":"ballArea"},{"v0":6,"v1":7,"trait":"ballArea"},{"v0":12,"v1":13,"trait":"goalNet","curve":-90},{"v0":13,"v1":14,"trait":"goalNet"},{"v0":14,"v1":15,"trait":"goalNet","curve":-90},{"v0":16,"v1":17,"trait":"goalNet","curve":90},{"v0":17,"v1":18,"trait":"goalNet"},{"v0":18,"v1":19,"trait":"goalNet","curve":90},{"v0":8,"v1":9,"trait":"kickOffBarrier"},{"v0":9,"v1":10,"trait":"kickOffBarrier","curve":180,"cGroup":["blueKO"]},{"v0":9,"v1":10,"trait":"kickOffBarrier","curve":-180,"cGroup":["redKO"]},{"v0":10,"v1":11,"trait":"kickOffBarrier"}],"goals":[],"discs":[{"pos":[-370,64],"trait":"goalPost","color":"FFCCCC"},{"pos":[-370,-64],"trait":"goalPost","color":"FFCCCC"},{"pos":[370,64],"trait":"goalPost","color":"CCCCFF"},{"pos":[370,-64],"trait":"goalPost","color":"CCCCFF"}],"planes":[{"normal":[0,1],"dist":-170,"trait":"ballArea"},{"normal":[0,-1],"dist":-170,"trait":"ballArea"},{"normal":[0,1],"dist":-200,"bCoef":0.1},{"normal":[0,-1],"dist":-200,"bCoef":0.1},{"normal":[1,0],"dist":-420,"bCoef":0.1},{"normal":[-1,0],"dist":-420,"bCoef":0.1}],"traits":{"ballArea":{"vis":false,"bCoef":1,"cMask":["ball"]},"goalPost":{"radius":8,"invMass":0,"bCoef":0.5},"goalNet":{"vis":true,"bCoef":0.1,"cMask":["ball"]},"kickOffBarrier":{"vis":false,"bCoef":0.1,"cGroup":["redKO","blueKO"],"cMask":["red","blue"]}}}';
+
+/* STADYUM 2X2 */
+ var classicMap = '{"name":"Power classic","width":420,"height":200,"spawnDistance":170,"bg":{"type":"grass","width":370,"height":170,"kickOffRadius":75,"cornerRadius":0},"playerPhysics":{"bCoef":0.5,"invMass":0.5,"damping":0.96,"acceleration":0.11,"kickingAcceleration":0.11,"kickingDamping":0.96,"kickStrength":11},"vertexes":[{"x":-370,"y":170,"trait":"ballArea"},{"x":-370,"y":64,"trait":"ballArea"},{"x":-370,"y":-64,"trait":"ballArea"},{"x":-370,"y":-170,"trait":"ballArea"},{"x":370,"y":170,"trait":"ballArea"},{"x":370,"y":64,"trait":"ballArea"},{"x":370,"y":-64,"trait":"ballArea"},{"x":370,"y":-170,"trait":"ballArea"},{"x":0,"y":200,"trait":"kickOffBarrier"},{"x":0,"y":75,"trait":"kickOffBarrier"},{"x":0,"y":-75,"trait":"kickOffBarrier"},{"x":0,"y":-200,"trait":"kickOffBarrier"},{"x":-380,"y":-64,"trait":"goalNet"},{"x":-400,"y":-44,"trait":"goalNet"},{"x":-400,"y":44,"trait":"goalNet"},{"x":-380,"y":64,"trait":"goalNet"},{"x":380,"y":-64,"trait":"goalNet"},{"x":400,"y":-44,"trait":"goalNet"},{"x":400,"y":44,"trait":"goalNet"},{"x":380,"y":64,"trait":"goalNet"},{"bCoef":1,"cMask":["ball"],"trait":"ballArea","x":-380,"y":-64},{"bCoef":1,"cMask":["ball"],"trait":"ballArea","x":-380,"y":64},{"bCoef":1,"cMask":["ball"],"trait":"ballArea","x":380,"y":-64},{"bCoef":1,"cMask":["ball"],"trait":"ballArea","x":380,"y":64},{"bCoef":1,"trait":"ballArea","x":385,"y":64,"cMask":["ball"]},{"bCoef":1,"trait":"ballArea","x":385,"y":170,"cMask":["ball"]},{"bCoef":1,"trait":"ballArea","x":385,"y":-170,"cMask":["ball"]},{"bCoef":1,"trait":"ballArea","x":385,"y":-64,"cMask":["ball"]},{"bCoef":1,"cMask":["ball"],"trait":"ballArea","x":-385,"y":64},{"bCoef":1,"cMask":["ball"],"trait":"ballArea","x":-385,"y":170},{"bCoef":1,"cMask":["ball"],"trait":"ballArea","x":-385,"y":-170},{"bCoef":1,"cMask":["ball"],"trait":"ballArea","x":-385,"y":-64}],"segments":[{"v0":0,"v1":1,"trait":"ballArea"},{"v0":2,"v1":3,"trait":"ballArea"},{"v0":4,"v1":5,"trait":"ballArea"},{"v0":6,"v1":7,"trait":"ballArea"},{"v0":12,"v1":13,"trait":"goalNet","curve":-90},{"v0":13,"v1":14,"trait":"goalNet"},{"v0":14,"v1":15,"trait":"goalNet","curve":-90},{"v0":16,"v1":17,"trait":"goalNet","curve":90},{"v0":17,"v1":18,"trait":"goalNet"},{"v0":18,"v1":19,"trait":"goalNet","curve":90},{"v0":8,"v1":9,"trait":"kickOffBarrier"},{"v0":9,"v1":10,"trait":"kickOffBarrier","curve":180,"cGroup":["blueKO"]},{"v0":9,"v1":10,"trait":"kickOffBarrier","curve":-180,"cGroup":["redKO"]},{"v0":10,"v1":11,"trait":"kickOffBarrier"},{"vis":false,"color":"FFCCCC","bCoef":1,"trait":"ballArea","v0":24,"v1":25,"cMask":["ball"],"x":385},{"vis":false,"color":"CCCCFF","bCoef":1,"trait":"ballArea","v0":26,"v1":27,"x":385,"cMask":["ball"]},{"vis":false,"color":"FFCCCC","bCoef":1,"cMask":["ball"],"trait":"ballArea","v0":28,"v1":29,"x":-385},{"vis":false,"color":"FFCCCC","bCoef":1,"cMask":["ball"],"trait":"ballArea","v0":30,"v1":31,"x":-385},{"vis":false,"color":"FFCCCC","bCoef":1,"cMask":["ball"],"trait":"ballArea","v0":31,"v1":31}],"goals":[{"p0":[-370,64],"p1":[-370,-64],"team":"red"},{"p0":[370,64],"p1":[370,-64],"team":"blue"}],"discs":[{"pos":[-370,64],"trait":"goalPost","color":"FFCCCC","bCoef":0.5},{"pos":[-370,-64],"trait":"goalPost","color":"FFCCCC"},{"pos":[370,64],"trait":"goalPost","color":"CCCCFF"},{"pos":[370,-64],"trait":"goalPost","color":"CCCCFF"}],"planes":[{"normal":[0,1],"dist":-170,"trait":"ballArea"},{"normal":[0,-1],"dist":-170,"trait":"ballArea"},{"normal":[0,1],"dist":-200,"bCoef":0.1},{"normal":[0,-1],"dist":-200,"bCoef":0.1},{"normal":[1,0],"dist":-420,"bCoef":0.1},{"normal":[-1,0],"dist":-420,"bCoef":0.1}],"traits":{"ballArea":{"vis":false,"bCoef":1,"cMask":["ball"]},"goalPost":{"radius":8,"invMass":0,"bCoef":0.5},"goalNet":{"vis":true,"bCoef":0.1,"cMask":["ball"]},"kickOffBarrier":{"vis":false,"bCoef":0.1,"cGroup":["redKO","blueKO"],"cMask":["red","blue"]}}}';
+
+ /* STADYUM 3x3 */
+ var bigMap = '{"name":"Power Big","width":600,"height":270,"spawnDistance":350,"bg":{"type":"grass","width":550,"height":240,"kickOffRadius":80,"cornerRadius":0},"playerPhysics":{"bCoef":0.5,"invMass":0.5,"damping":0.96,"acceleration":0.12,"kickingAcceleration":0.12,"kickingDamping":0.96,"kickStrength":11},"vertexes":[{"x":-550,"y":240,"trait":"ballArea"},{"x":-550,"y":80,"trait":"ballArea"},{"x":-550,"y":-80,"trait":"ballArea"},{"x":-550,"y":-240,"trait":"ballArea"},{"x":550,"y":240,"trait":"ballArea"},{"x":550,"y":80,"trait":"ballArea"},{"x":550,"y":-80,"trait":"ballArea"},{"x":550,"y":-240,"trait":"ballArea"},{"x":0,"y":270,"trait":"kickOffBarrier"},{"x":0,"y":80,"trait":"kickOffBarrier"},{"x":0,"y":-80,"trait":"kickOffBarrier"},{"x":0,"y":-270,"trait":"kickOffBarrier"},{"x":-560,"y":-80,"trait":"goalNet"},{"x":-580,"y":-60,"trait":"goalNet"},{"x":-580,"y":60,"trait":"goalNet"},{"x":-560,"y":80,"trait":"goalNet"},{"x":560,"y":-80,"trait":"goalNet"},{"x":580,"y":-60,"trait":"goalNet"},{"x":580,"y":60,"trait":"goalNet"},{"x":560,"y":80,"trait":"goalNet"},{"bCoef":1,"cMask":["ball"],"trait":"ballArea","x":565,"y":80},{"bCoef":1,"cMask":["ball"],"trait":"ballArea","x":565,"y":240},{"bCoef":1,"cMask":["ball"],"trait":"ballArea","x":565,"y":-240},{"bCoef":1,"cMask":["ball"],"trait":"ballArea","x":565,"y":-80},{"bCoef":1,"cMask":["ball"],"trait":"ballArea","x":-565,"y":-240},{"bCoef":1,"cMask":["ball"],"trait":"ballArea","x":-565,"y":-80},{"bCoef":1,"cMask":["ball"],"trait":"ballArea","x":-565,"y":80},{"bCoef":1,"cMask":["ball"],"trait":"ballArea","x":-565,"y":240}],"segments":[{"v0":0,"v1":1,"trait":"ballArea"},{"v0":2,"v1":3,"trait":"ballArea"},{"v0":4,"v1":5,"trait":"ballArea"},{"v0":6,"v1":7,"trait":"ballArea"},{"v0":12,"v1":13,"trait":"goalNet","curve":-90},{"v0":13,"v1":14,"trait":"goalNet"},{"v0":14,"v1":15,"trait":"goalNet","curve":-90},{"v0":16,"v1":17,"trait":"goalNet","curve":90},{"v0":17,"v1":18,"trait":"goalNet"},{"v0":18,"v1":19,"trait":"goalNet","curve":90},{"v0":8,"v1":9,"trait":"kickOffBarrier"},{"v0":9,"v1":10,"trait":"kickOffBarrier","curve":180,"cGroup":["blueKO"]},{"v0":9,"v1":10,"trait":"kickOffBarrier","curve":-180,"cGroup":["redKO"]},{"v0":10,"v1":11,"trait":"kickOffBarrier"},{"vis":false,"color":"CCCCFF","bCoef":1,"cMask":["ball"],"trait":"ballArea","v0":20,"v1":21,"x":565},{"vis":false,"color":"CCCCFF","bCoef":1,"cMask":["ball"],"trait":"ballArea","v0":22,"v1":23,"x":565},{"vis":false,"color":"CCCCFF","bCoef":1,"cMask":["ball"],"trait":"ballArea","v0":24,"v1":25,"x":-565},{"vis":false,"color":"FFCCCC","bCoef":1,"cMask":["ball"],"trait":"ballArea","v0":26,"v1":27}],"goals":[{"p0":[-550,80],"p1":[-550,-80],"team":"red"},{"p0":[550,80],"p1":[550,-80],"team":"blue"}],"discs":[{"pos":[-550,80],"trait":"goalPost","color":"FFCCCC"},{"pos":[-550,-80],"trait":"goalPost","color":"FFCCCC"},{"pos":[550,80],"trait":"goalPost","color":"CCCCFF"},{"pos":[550,-80],"trait":"goalPost","color":"CCCCFF"}],"planes":[{"normal":[0,1],"dist":-240,"trait":"ballArea"},{"normal":[0,-1],"dist":-240,"trait":"ballArea"},{"normal":[0,1],"dist":-270,"bCoef":0.1},{"normal":[0,-1],"dist":-270,"bCoef":0.1},{"normal":[1,0],"dist":-600,"bCoef":0.1},{"normal":[-1,0],"dist":-600,"bCoef":0.1}],"traits":{"ballArea":{"vis":false,"bCoef":1,"cMask":["ball"]},"goalPost":{"radius":8,"invMass":0,"bCoef":0.5},"goalNet":{"vis":true,"bCoef":0.1,"cMask":["ball"]},"kickOffBarrier":{"vis":false,"bCoef":0.1,"cGroup":["redKO","blueKO"],"cMask":["red","blue"]}}}';
+
+	function updateRoleOnPlayerIn() {
+		updateTeams();
+		if (inChooseMode) {
+			if (players.length == 6) {
+				loadMap(bigMap, scoreLimitBig, timeLimitBig);
+			}
+			getSpecList(teamR.length <= teamB.length ? teamR[0] : teamB[0]);
+		}
+		balanceTeams();
+	}
+
+	function updateRoleOnPlayerOut() {
+	    updateTeams();
+		if (room.getScores() != null) {
+			var scores = room.getScores();
+			if (players.length >= 2 * maxTeamSize && scores.time >= (5/6) * game.scores.timeLimit && teamR.length != teamB.length) {
+				if (teamR.length < teamB.length) {
+					if (scores.blue - scores.red == 2) {
+						endGame(Team.BLUE);
+						room.sendChat("Öfke çıkışı algılandı. Oyun bitti");
+						setTimeout(() => { room.stopGame(); }, 100);
+						return;
+					}
+				}
+				else {
+					if (scores.red - scores.blue == 2) {
+						endGame(Team.RED);
+						room.sendChat("Öfke çıkışı algılandı. Oyun bitti");
+						setTimeout(() => { room.stopGame(); }, 100);
+						return;
+					}
+				}
+			}
+		}
+		if (inChooseMode) {
+			if (players.length == 5) {
+				loadMap(classicMap, scoreLimitClassic, timeLimitClassic);
+			}
+			if (teamR.length == 0 || teamB.length == 0) {
+				teamR.length == 0 ? room.setPlayerTeam(teamS[0].id, Team.RED) : room.setPlayerTeam(teamS[0].id, Team.BLUE);
+				return;
+			}
+			if (Math.abs(teamR.length - teamB.length) == teamS.length) {
+				room.sendChat("Seçimlerde bu durumu halletmeme izin ver");
+				deactivateChooseMode();
+				resumeGame();
+				var b = teamS.length;
+				if (teamR.length > teamB.length) {
+					for (var i = 0 ; i < b ; i++) {
+						setTimeout(() => { room.setPlayerTeam(teamS[0].id, Team.BLUE); }, 5*i);
+					}
+				}
+				else {
+					for (var i = 0 ; i < b ; i++) {
+						setTimeout(() => { room.setPlayerTeam(teamS[0].id, Team.RED); }, 5*i);
+					}
+				}
+				return;
+			}
+			if (streak == 0 && room.getScores() == null) {
+				if (Math.abs(teamR.length - teamB.length) == 2) { // if someone left a team has 2 more players than the other one, put the last chosen guy back in his place so it's fair
+					room.sendChat(" Dengeleme ekipleri...");
+					teamR.length > teamB.length ? room.setPlayerTeam(teamR[teamR.length - 1].id, Team.SPECTATORS) : room.setPlayerTeam(teamB[teamB.length - 1].id, Team.SPECTATORS);
+				}
+			}
+			if (teamR.length == teamB.length && teamS.length < 2) {
+				deactivateChooseMode();
+				resumeGame();
+				return;
+			}
+			capLeft ? choosePlayer() : getSpecList(teamR.length <= teamB.length ? teamR[0] : teamB[0]);
+		}
+		balanceTeams();
+	}
+
+	function balanceTeams() {
+		if (!inChooseMode) {
+			if (players.length == 1 && teamR.length == 0) {
+	            quickRestart();
+	            loadMap(aloneMap, 0, 0);
+				room.setPlayerTeam(players[0].id, Team.RED);
+			}
+			else if (Math.abs(teamR.length - teamB.length) == teamS.length && teamS.length > 0) {
+				const n = Math.abs(teamR.length - teamB.length);
+				if (players.length == 2) {
+					quickRestart();
+					loadMap(classicMap, scoreLimitClassic, timeLimitClassic);
+				}
+				if (teamR.length > teamB.length) {
+					for (var i = 0 ; i < n ; i++) {
+						room.setPlayerTeam(teamS[i].id, Team.BLUE);
+					}
+				}
+				else {
+					for (var i = 0 ; i < n ; i++) {
+						room.setPlayerTeam(teamS[i].id, Team.RED);
+					}
+				}
+			}
+			else if (Math.abs(teamR.length - teamB.length) > teamS.length) {
+				const n = Math.abs(teamR.length - teamB.length);
+				if (players.length == 1) {
+					quickRestart();
+					loadMap(aloneMap, 0, 0);
+					room.setPlayerTeam(players[0].id, Team.RED);
+					return;
+				}
+				else if (players.length == 5) {
+					quickRestart();
+					loadMap(classicMap, scoreLimitClassic, timeLimitClassic);
+				}
+				if (players.length == maxTeamSize * 2 - 1) {
+					allReds = [];
+					allBlues = [];
+				}
+				if (teamR.length > teamB.length) {
+					for (var i = 0 ; i < n ; i++) {
+						room.setPlayerTeam(teamR[teamR.length - 1 - i].id, Team.SPECTATORS);
+					}
+				}
+				else {
+					for (var i = 0 ; i < n ; i++) {
+						room.setPlayerTeam(teamB[teamB.length - 1 - i].id, Team.SPECTATORS);
+					}
+				}
+			}
+			else if (Math.abs(teamR.length - teamB.length) < teamS.length && teamR.length != teamB.length) {
+				room.pauseGame(true);
+				activateChooseMode();
+				choosePlayer();
+			}
+			else if (teamS.length >= 2 && teamR.length == teamB.length && teamR.length < maxTeamSize) {
+				if (teamR.length == 2) {
+					quickRestart();
+					loadMap(bigMap, scoreLimitBig, timeLimitBig);
+				}
+				topBtn();
+			}
+		}
+	}
+
+	function choosePlayer() {
+		clearTimeout(timeOutCap);
+		if (teamR.length <= teamB.length && teamR.length != 0) {
+			room.sendChat("[PV] Bir oyuncu seçmek için verilen listeye numarasını yazın veya 'üst', 'rastgele' veya 'alt' tuşlarını kullanın..", teamR[0].id);
+			timeOutCap = setTimeout(function (player) { room.sendChat("[PV] Acele edin @" + player.name + ", Sadece " + Number.parseInt(chooseTime / 2) + " seçmek için saniyeler kaldı!", player.id); timeOutCap = setTimeout(function (player) { room.kickPlayer(player.id, "Zamanında seçmedin!", false); }, chooseTime * 500, teamR[0]); }, chooseTime * 1000, teamR[0]);
+		}
+		else if (teamB.length < teamR.length && teamB.length != 0) {
+			room.sendChat("[PV] Bir oyuncu seçmek için verilen listeye numarasını yazın veya 'üst', 'rastgele' veya 'alt' tuşlarını kullanın.'.", teamB[0].id);
+			timeOutCap = setTimeout(function (player) { room.sendChat("[PV] Acele edin @" + player.name + ", Sadece " + Number.parseInt(chooseTime / 2) + " seçmek için saniyeler kaldı!", player.id); timeOutCap = setTimeout(function (player) { room.kickPlayer(player.id, "Zamanında seçmedin!", false); }, chooseTime * 500, teamB[0]); }, chooseTime * 1000, teamB[0]);
+		}
+		if (teamR.length != 0 && teamB.length != 0) getSpecList(teamR.length <= teamB.length ? teamR[0] : teamB[0]);
+	}
+
+	function getSpecList(player) {
+		var cstm = "[PV] Oyuncular: ";
+		for (var i = 0 ; i < teamS.length ; i++) {
+			if (140 - cstm.length < (teamS[i].name + "[" + (i+1) + "], ").length) {
+				room.sendChat(cstm, player.id);
+				cstm = "... ";
+			}
+			cstm += teamS[i].name + "[" + (i+1) + "], ";
+		}
+		cstm = cstm.substring(0,cstm.length - 2);
+		cstm += ".";
+		room.sendChat(cstm, player.id);
+	}
+
+// function that converts a color HEX to a valid Discord color
+function hexToDecimal(hex) {
+  return parseInt(hex.replace("#",""), 16)
+}
+
+}
+function SendLink(link){
+    var request = new XMLHttpRequest();
+    request.open("POST", sendLinkWebhookURL);
+    // again, replace the url in the open method with yours
+    request.setRequestHeader('Content-type', 'application/json');
+    if(roomPublic == true){
+        visible = "✅";
+    }else {
+        visible = "❌";
+    }
+    var myEmbed = {
+    author: {
+        name: "Room Link"
+    },
+    title: "🔅Oda Duyurusu: ",
+    description: `🏠Room Name ${roomName} \n 👥Max Players: ${maxPlayers} \n 📢Visible In Room List: ${visible}`,
+    color: hexToDecimal("#ff0000")//type here a hex colors that you want (#ff0000 is red)
+}
+
+var params = {
+    username: "⚠️Oda Duyurusu⚠️",
+    embeds: [ myEmbed ]
+}
+
+request.send(JSON.stringify(params));
+
+// function that converts a color HEX to a valid Discord color
+function hexToDecimal(hex) {
+  return parseInt(hex.replace("#",""), 16)
+}
+
+}
+function Blocked(msg) {
+    if (blockedWords.includes(msg)) {
+        return true;
+    } else return false;
+}
+setInterval(() => {
+	var players = room.getPlayerList();
+	for (i = 0; i < players.length; i++) {
+		if (players[i].position != null && kickOff == true) {
+			playersAfk[players[i].name]++;
+			if(playersAfk[players[i].name] == 4)
+				room.sendAnnouncement("❌ Hey " + players[i].name + ", Hareket Etmezsen 6 Saniye Sonra Odadan Atılacaksın", null, colors.red, "normal", 2);
+			else if(playersAfk[players[i].name] == 10)
+				room.kickPlayer(players[i].id, "💤 𝐀𝐅𝐊.", false);
+		}
+		else
+			playersAfk[players[i].name] = 0;
+	}
+}, 1000);
+function BallPosition(a, b, c, d) {
+    for (let i = 0; i <= room.getDiscCount(); i++) {
+        let disc = room.getDiscProperties(i);
+
+        if (disc && disc.radius == 8) {
+            room.setDiscProperties(0, { x: a, y: b });
+            room.setDiscProperties(0, { xspeed: c, yspeed: d });
+        }
+    }
+}
+function afkFun(player, message){ // !classic
+    if(player.team == Team.SPECTATORS){
+        if (afkPlayerIDs.has(player.id)){
+            afkPlayerIDs.delete(player.id);
+            room.sendChat("🔆 " + player.name + " Artık 𝐀𝐅𝐊 Değil!");
+        }else {
+            afkPlayerIDs.add(player.id);
+            room.setPlayerTeam(player.id, 0);
+            room.sendAnnouncement("[💤] " + player.name + " Şimdi 𝐀𝐅𝐊", null, 0xff8400, 'normal', 2);
+        }
+    }else {
+        room.sendAnnouncement("❌[PM]Oyundayken AFK Olamazsınız",player.id,colors.red,'bold',2);
+    }
+    
+}
+const votedPlayers = new Set() 
+var votekickInfoInterval; 
+var votekickInfoIntervalTime = 180000; 
+let votekickTimes = {}; 
+let votekickCount = {}; 
+var votekickTimeout = 60000; 
+var PlayerFound = false; 
+
+function votekickRemove(player) {
+    votekickCount[player.id] = [];
+    var players = room.getPlayerList();
+    for(var i=0; i<players.length; i++){
+    if(votedPlayers.has(players[i].id)==true){
+        votedPlayers.delete(players[i].id);
+    }
+    }
+}
+function votekickCheck(player){
+    if((room.getPlayerList().length)%2 == 0){
+        if(votekickCount[player.id].length >= (room.getPlayerList().length)*1/2){
+        room.kickPlayer(player.id,"Oy kullanarak KİCK attın.",false);
+    }
+        else{
+        room.sendAnnouncement("🗳️ " + player.name + " : " + votekickCount[player.id].length + "/" + (room.getPlayerList().length)*1/2,null,0xFFFFFF,"normal",1);
+    }
+    }
+    else if((room.getPlayerList().length)%2 == 1){
+        if(votekickCount[player.id].length >= Math.round((room.getPlayerList().length)*1/2)){
+        room.kickPlayer(player.id,"Oy kullanarak KİCK attın.",false);
+    }
+        else{
+        room.sendAnnouncement("🗳️ " + player.name + " : " + votekickCount[player.id].length + "/" + Math.round((room.getPlayerList().length)*1/2),null,0xFFFFFF,"normal",1);
+    }
+    }
+}   
+room.onPlayerJoin = function(player){
+   votekickCount[player.id] = [];
+}
+room.onPlayerLeave = function(player){
+    delete votekickCount[player.id]; 
+    delete votekickTimes[player.id]; 
+}
+function sendPm(player, message){ //!pv
+    var pm = message.substr(4);
+    var index = message.split(" ").slice(1);
+    var playerID = index[0]
+    var message2 = message.substr(5);
+    var message3 = "[ ID: " + player.id + " - 🔒💬] " + player.name + ":" + message2;
+    console.log(playerID);
+    console.log(index);
+    console.log(message);
+    console.log(message2);
+    console.log(message3);
+    room.sendAnnouncement(message3, parseInt(playerID), 0x8271ff, "normal", 2);
+    var players = room.getPlayerList().filter((player) => player.id != 0 );
+    if ( players.find((player => player.id === playerID))) {room.sendAnnouncement("❌ Bu Kullanıcı İD Çalışmıyor!, Oyuncu kimliğini görmek için # yazın.", player.id, 0x19FF85, "normal", 0);}
+    else {room.sendAnnouncement("[📨] Özel Mesaj Başarıyla Gönderildi! ✅", player.id, 0x19FF85, "normal", 0);};
+    return false;
+}
+function getRandomInt(max) {
+    // returns a random number from 0 to max-1
+    return Math.floor(Math.random() * Math.floor(max));
+}
+function GetPlayer(id){
+    for(var i=0; i<PlayerList.length; i++){
+	if(PlayerList[i].id==id){
+	    return PlayerList[i];
+	}
+    }
+}
+function CreatePlayer(player){
+    PlayerList[PlayerList.length]={
+	name:player.name,
+	id:player.id,
+	auth:undefined,
+	conn:undefined,
+    inroom:true,
+	jointime:0
+    };
+}
+
+function DeletePlayer(id){
+    for(var i=0; i<PlayerList.length; i++){
+	if(PlayerList[i].id==id){
+	    PlayerList.splice(i,1);
+	}
+    }
+}
+function chatLog(message) {
+
+    var request = new XMLHttpRequest();
+    request.open("POST", chatLogWebhookURL);
+
+    request.setRequestHeader('Content-type', 'application/json');
+
+    var params = {
+        avatar_url: '',
+        username: 'Chat Log',
+        content: message
+    };
+
+    request.send(JSON.stringify(params));
+}
+let roomNameString = roomName;
+let RecSistem = {
+    getCustomDate: ()=>{
+        let
+        data = new Date().toLocaleDateString().split("/").join("-"),
+        relogio = new Date().toLocaleTimeString().split(":");
+
+        return `${data}-${relogio[0]}h${relogio[1]}m`;
+    },
+    getScoresTime: time=>{
+        return ~~(Math.trunc(time) / 60) + ":" + (Math.trunc(time)%60).toString().padStart(2, '0');
+    },
+    sendDiscordWebhook: scores=>{
+        let
+        red = room.getPlayerList().filter((player)=>player.team == 1).map((player)=> player.name),
+        blue = room.getPlayerList().filter((player)=>player.team == 2).map((player)=> player.name);
+
+        let form = new FormData();
+        form.append(null, new File( [room.stopRecording()], `HBReplay-${RecSistem.getCustomDate()}.hbr2`, {"type": "text/plain"} ));
+        form.append("payload_json", JSON.stringify(RecSistem.getParams(scores, red, blue)));
+
+        let xhr = new XMLHttpRequest();
+        xhr.open("POST", sendRecWebhookURL);
+        xhr.send(form);
+    },
+    getParams: (scores, red, blue)=>{
+        let params = {
+          "username": "Match Record",
+          "avatar_url": "",//Avatar Url Of The Bot
+          "content": "",
+          "embeds": [{
+            "title": "",
+            "color": 2078513,
+            "description": "",
+            "timestamp": null,
+            "author": { "name": roomNameString },
+            "image": {},
+            "thumbnail": {},
+            "footer": {
+                "text": `Match Record - Statistics`,
+                "icon_url": ""
+            },
+            "fields": [
+            { "name": "🔴RED", "value": `${red.join("\n")}\n**⚽Goals**\n${scores.red}`, "inline": true },
+            { "name": "🔵BLUE", "value": `${blue.join("\n")}\n**⚽Goals**\n${scores.blue}`, "inline": true },
+            { "name": "🕐Time", "value": RecSistem.getScoresTime(scores.time) }
+            ]
+        }],
+        "components": []
+    };
+    return params;
+}
+
+};
+
+function callAdmin(message) {
+
+    var request = new XMLHttpRequest();
+    request.open("POST", adminWebhookURL);
+
+    request.setRequestHeader('Content-type', 'application/json');
+
+    var params = {
+        avatar_url: '',
+        username: 'Admin Çağrısı'
+,
+        content: message
+    };
+
+    request.send(JSON.stringify(params));
+}
+var playerCount = 0; //number of players in the room (without bot)
+var admin = [""]; //auth's of admins
+var bannedPlayers = [""]//auth's of banned players
+var vipPlayers = [""];//auth's of vip players
+var adminList = new Set();
+var vipList = new Set();
+var banList = [""];
+var BanListForChat = [];
+var PlayerAuth= {};
+var PlayerConn= {};
+var joinLimit = maxPlayers;
+room.onPlayerJoin = function(player){
+    for (var i in PlayerAuth) {
+        //checking by using auth
+        if(PlayerAuth[i].auth == player.auth){
+            room.kickPlayer(PlayerAuth[i].id, "❌Sekme algılama Engellendi. Yapma! Odadaki Sekmeniz: " + player.name, false);
+        }   
+    }
+    PlayerAuth[player.auth] = player;
+    for (var i in PlayerConn) {
+        //checking by using conn
+        if(PlayerConn[i].conn == player.conn){
+            room.kickPlayer(PlayerConn[i].id, "❌Sekme algılama Engellendi. Yapma! Odadaki Sekmeniz: " + player.name, false);
+        }   
+    }
+    PlayerConn[player.conn] = player;
+    /*if(bannedPlayers.includes(player.auth)){
+        banList.push(player.auth);
+    }*/
+    
+    if(player.name.startsWith(" ") == true || player.name.endsWith(" ") == true){
+        room.kickPlayer(player.id,"❌Adınızın Sağında Veya Solunda Boşluk Olmamalıdır.",false);
+    }
+    //banList = JSON.parse(localStorage.getItem("banlist"));
+    /*if(banList == null || banList == undefined || banList == ""){
+        banList = [];
+        
+    }
+    if (banList.includes(player.auth)){
+        room.kickPlayer(player.id, "✖️Kalıcı Olarak Banlandın✖️",true)
+    };*/
+    var seconds = 300;//Type here how many seconds you want to send a message
+    setInterval(function () {sendDiscordLink();}, seconds*1000);
+    CreatePlayer(player);
+    GetPlayer(player.id).auth = player.auth;
+    GetPlayer(player.id).conn = player.conn;
+    GetPlayer(player.id).inroom = true;
+    auth = player.auth
+    stats = JSON.parse(localStorage.getItem(player.auth));
+    if(stats == null || stats == undefined || stats == ""){
+        stats = [0,0,0,0,0,0,1,player.name,0]
+        localStorage.setItem(player.auth, JSON.stringify(stats));
+    }
+    stats = JSON.parse(localStorage.getItem(auth));
+    /*if(stats[8] == 1){
+        room.kickPlayer(player.id, "✖️Kalıcı Olarak Banlandın✖️",true)
+    }else {
+        //nothing
+    }*/
+    //  updateAdmins(); 
+    if(vipPlayers.includes(player.auth)){
+        vipList.add(player.id);
+    }if(admin.includes(player.auth)){
+        adminList.add(player.id);
+    }
+    if(room.getPlayerList().length == joinLimit-1){
+        if(adminList.has(player.id) == false){
+            if(vipList.has(player.id) == false){
+                room.kickPlayer(player.id, "✖️Son yer, Admninler ve VIP'ler için ayrılmıştır..");
+            }
+        }
+        
+    }
+    console.log(PlayerList)
+    room.sendAnnouncement("Merhaba, "+player.name+", Komutlar 🔴!dc 🟠!admin 🟡!help",null,0xfffff,'bold',2)
+    
+    clonekick(player);//kicks the second player that he has same name with a diffrent player
+    if(admin.includes(player.auth)){
+        room.setPlayerAdmin(player.id,true);
+        room.sendAnnouncement("Admin Olarak Giriş Yaptınız",player.id,colors.orange,'italic',1);
+    };
+    
+    
+    console.log("🕑"+new Date().getHours() + ":" + new Date().getMinutes()+"]"+"📈 "+player.name + " Odaya Katıldı - Auth: " + player.auth + " | Conn: "+ player.conn);
+
+}
+room.onRoomLink = function(url){
+    room.setTeamColors(1, 60, 0xFFFFFF, [0xFF0800, 0xFF0800, 0xFF0800]);
+    room.setTeamColors(2, 180, 0xFFFFFF, [0x0082E1, 0x0C161E, 0x0082E1]);
+    SendLink(url)
+}
+
+var vipColor = 0xfffff;//color for vip players in chat
+var adminColor = 0xFF7F00;//color for admins in chat
+var muteList = new Set();
+var close = false;
+room.onPlayerChat = function(player,msg){
+    var pm = msg;
+    var chat = msg;
+    var message  = msg.split(/ +/);
+    chatLog(player.name + ": " + msg);//sending chat logs to a discord channel
+    if (["!help"].includes(message[0].toLowerCase())) {
+        room.sendAnnouncement("Komutlar: !discord, !admin, !pm [playerid], !afk, !banlist",player.id,colors.white,'bold',2);
+        room.sendAnnouncement("Rank Komutları: !rank, !rankhelp",player.id,colors.orange,'bold',2);
+        if(player.admin==true){
+            room.sendAnnouncement("👇Admin Komutları:",player.id,colors.white,'bold',2);
+            room.sendAnnouncement("⚜️Moderation: !mute [playerid], !unmute [playerid], !clearbans, !unmuteall, !susun, !konuşun",player.id,colors.red,'bold',2) 
+        }
+        return false;
+    }else if (["!bb", "!bye", "!cya", "!gn"].includes(message[0].toLowerCase())) {
+        room.kickPlayer(player.id, "👋Bye !", false);
+        return false;
+    }
+    } ;if (["!rank"].includes(message[0].toLowerCase())) {
+        stats = JSON.parse(localStorage.getItem(auth)); 
+        room.sendAnnouncement(player.name +": 💠Puanlar: "+ stats[5].toString()+": Maçlar: "+ stats[0].toString() + " 👌Galibiyetler: " + stats[1].toString() + " ❌Mağlubiyetler: " + stats[2].toString() + " ⚽️Goller: " + stats[3].toString()+ " 😂OG: " + stats[4].toString(),null,colors.white,'bold',2);
+        return false;
+    }else if (["!afk"].includes(message[0].toLowerCase())) {
+        afkFun(player,msg);
+        return false;
+    }else if (["!dc","!discord"].includes(message[0].toLowerCase())) {
+        room.sendAnnouncement("[PM]👥Discord: [discordlink]",player.id,colors.white,'bold',1);
+        return false;
+    }
+        return false;
+    
+        callAdmin("[🕑"+new Date().getHours() + ":" + new Date().getMinutes()+"]"+player.name + " Admin Aranıyor");;
+        return false;
+else if (["!mute"].includes(message[0].toLowerCase()) && player.admin == true) {
+        var mutedPlayer = message[1]
+        if(muteList.has(mutedPlayer)){
+            //if admin trying to mute a player that the player is already muted
+            room.sendChat("Bu Oyuncu Zaten Sessize Alınmış!",player.id);//private message to admin
+        }else {
+            //if admin trys to mute a player
+            muteList.add(mutedPlayer);
+        }
+        return false;
+    } else if (["!susun"].includes(message[0].toLowerCase())&&player.admin) {
+        room.sendAnnouncement("🚫Sohbet Bir Admin Tarafından Kapatıldı",null,colors.red,'bold',2);
+        closed = true
+        return false;
+        
+    } else if (["!konuşun"].includes(message[0].toLowerCase())&&player.admin) {
+        room.sendAnnouncement("✅Bir Admin Tarafından Sohbet Açıldı",null,colors.green,'bold',2);
+        closed = false
+        return false;
+    } 
+
+    else if (["!t"].includes(message[0].toLowerCase())) {
+        let m = msg.substring(3);
+        sendChatForTeam(player.name + ": " + m, player.team);
+        return false;
+    } else if (["!rankhelp"].includes(message[0].toLowerCase())) {
+        room.sendAnnouncement("🟤[Bronze] 50-200 Points",player.id,colors.brown,'bold',2);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
+        room.sendAnnouncement("⚪️[Silver] 200-500 Points",player.id,colors.white,'bold',2);
+        room.sendAnnouncement("🟣[Master] 500-1000 Points",player.id,colors.purple,'bold',2);
+        room.sendAnnouncement("🟡[Gold] 1000 Points",player.id,colors.yellow,'bold',2);
+        return false;
+    } else if (["!unmuteall"].includes(message[0].toLowerCase())&&player.admin) {
+        room.sendAnnouncement("⚠️Mute Temizlendi",null,colors.orange,'bold',2);
+        muteList.clear();
+        return false;
+    } else if (["!clearbans"].includes(message[0].toLowerCase())&&player.admin) {
+        room.sendAnnouncement("⚠️Banlar Temizlendi",null,colors.orange,'bold',2);
+        room.clearBans();
+        BanListForChat = [];
+        return false;
+    } else if (["!banlist", "!bans"].includes(message[0].toLowerCase())) {
+        if (BanListForChat.length == 0) {
+            room.sendAnnouncement("[PV] Ban Listesinde Kimse Yok!", player.id,colors.white,'bold',1);
+            return false;
+        }
+        var cstm = "[PM] Ban List : ";
+        for (var i = 0; i < BanListForChat.length; i++) {
+            if (140 - cstm.length < (BanListForChat[i][0] + "[" + (BanListForChat[i][1]) + "], ").length) {
+                room.sendChat(cstm, player.id);
+                cstm = "... ";
+            }
+            cstm += BanListForChat[i][0] + "[" + (BanListForChat[i][1]) + "], ";
+        }
+        cstm = cstm.substring(0, cstm.length - 2);
+        cstm += ".";
+        room.sendAnnouncement(cstm, player.id,colors.white,'bold',1);
+        return false;
+    }else if (["!claim"].includes(message[0].toLowerCase())) {
+        if(message[1] == adminPassword){
+            room.setPlayerAdmin(player.id, true);
+            room.sendChat("Admin Olarak Giriş Yaptınız",player.id);
+            adminList.add(player.id);//ads player to adminlist
+            adminPassword = 1000 + getRandomInt(9000);//changes admin password
+            console.log("Admin Password : " + adminPassword);
+        }else {
+            room.sendAnnouncement("Yanlış Şifre",player.id,colors.red,'bold',2);
+        }
+        return false;
+    } else if (["!pm"].includes(message[0].toLowerCase())) {
+        sendPm(player,pm);
+        return false;
+    }
+    if (message[0][0] == "!") {
+        room.sendAnnouncement("⚠️Girdiğiniz Komut Geçersiz",player.id,colors.red,'bold',2)
+        return false;
+    }
+    /*if (Blocked(msg)){
+        room.sendAnnouncement("🚫[PM] Bu Kelimeyi Kullanmak Yasaktır ",player.id,color.blue,'bold',2);
+        return false;
+    }*/
+    if (message.some(m => blockedWords.includes(m))) {
+        room.sendAnnouncement("🚫[PM] Bu Kelimeyi Kullanmak Yasaktır ",player.id,colors.blue,'bold',2);
+        return false
+    }
+    if(closed == true&& player.admin == false&& vipList.has(player.id) == false){
+        room.sendChat("[PM]⚠️Sohbet Bir Admin Tarafından Kapatıldı, Admin Sohbeti Açana Kadar Bekleyin",player.id)
+        return false;
+    }
+    if (SlowMode.includes(player.id) == true) {
+        room.sendAnnouncement("[💬] Yavaş Mod Aktif. Her 5 Saniyede Bir Sadece 1 Mesaj Gönderebilirsiniz. ⏱", player.id, 0x00FF00, "bold", 2);
+
+        return false;
+
+    }
+    if (player.admin == false && SlowMode.includes(player.id) == false) {
+        SlowMode.push(player.id);
+
+
+        setTimeout(function() {
+            SlowMode.splice(SlowMode.indexOf(player.id), 1);
+        }, slowModeTime*1000);
+
+    }
+    var rankTag = "";
+    stats = JSON.parse(localStorage.getItem(auth));
+    if(stats[5] < 50){
+        rankTag = "🦴";
+    }else if(stats[5] >= 50&& stats[5] < 200){
+        rankTag = "🟤";
+    }else if(stats[5] >= 200&& stats[5] < 500){
+        rankTag = "⚪️";
+    }else if(stats[5] >= 500&& stats[5] < 1000){
+        rankTag = "🟣";
+    }else if(stats[5] >= 1000){
+        rankTag = "🟡";
+    }
+    
+    if(muteList.has(player.id) && player.admin == false){
+        room.sendChat("[PM]Sessize alındın",player.id)//sends a private message to muted player
+        return false;
+    }
+    if(adminList.has(player.id) == true){
+        room.sendAnnouncement("["+rankTag+"🔱Admin]"+player.name+": "+ chat,null,adminColor,'bold',2);
+        return false;
+    }else if(vipList.has(player.id)== true){
+        room.sendAnnouncement("["+rankTag+"💎VIP]"+player.name+": "+ chat,null,vipColor,'bold',2);
+        return false;
+    }else if(adminList.has(player.id) == false && vipList.has(player.id)== false) {
+        room.sendAnnouncement("["+rankTag+"#"+player.id+"]"+player.name+": "+ chat,null,0xffffff,'bold',2);//0xffffff is white
+        return false;
+    }
+
+
+room.onPlayerBallKick = function(player){
+    lastPlayerTouched = player;
+    lastTeamTouched = player.team
+}
+
+room.onTeamGoal = function(team){
+    const scores = room.getScores();
+    BallPosition(0,0,0,0)
+    var ownGoal = isOwnGoal(team,lastPlayerTouched);
+    var own = false;
+    if(ownGoal != ""){
+        own = true;
+    }else {
+        own = false;
+    }
+    var redGoal = room.getScores().red
+    var blueGoal = room.getScores().blue
+    if(own == true){
+        room.sendAnnouncement("🔴"+redGoal + " - " + blueGoal + "🔵",null,colors.white,'bold',2)
+        room.sendAnnouncement(getTime(scores) + " 😂Kendi kalesine gol: " + lastPlayerTouched.name+" 💨Gol Hızı: "+ballSpeed.toPrecision(4).toString() +"km/h",null,colors.yellow,'bold',2);
+        stats[4] += 1
+        stats[5] -= 1;
+        localStorage.setItem(auth, JSON.stringify(stats));
+    }else {
+        if(lastPlayerTouched.team == Team.RED){
+            room.sendAnnouncement("🔴"+redGoal + " - " + blueGoal + "🔵",null,colors.white,'bold',2)
+            room.sendAnnouncement(getTime(scores) + " 🔴⚽Gol => " + lastPlayerTouched.name+" 💨Gol Hızı: "+ballSpeed.toPrecision(4).toString() +"km/h",null,colors.red,'bold',2);
+            stats[3] += 1
+            stats[5] += 1;
+            localStorage.setItem(auth, JSON.stringify(stats));
+            setInterval(setBallColor(colors.red), 1000);
+            //clearInterval(myInterval); 
+            setInterval(setBallColor(colors.white), 2000);
+            //clearInterval(myInterval2);
+            /*var golInterval1 = setInterval(function () {setBallColor(colors.red)}, 1000);
+            var golInterval2 = setInterval(function () {setBallColor(colors.white)}, 2000);
+    
+            clearInterval(golInterval1);
+            clearInterval(golInterval2);*/
+        }else if(lastPlayerTouched.team == Team.BLUE){
+            room.sendAnnouncement("🔴"+redGoal + " - " + blueGoal + "🔵",null,colors.white,'bold',2)
+            room.sendAnnouncement(getTime(scores) + " 🔵⚽Gol => " + lastPlayerTouched.name+" 💨Gol Hızı: "+ballSpeed.toPrecision(4).toString() +"km/h",null,colors.blue,'bold',2);
+            stats[3] += 1
+            stats[5] += 1;
+            localStorage.setItem(auth, JSON.stringify(stats));
+            setInterval(setBallColor(colors.blue), 1000);
+            clearInterval(myInterval3); 
+            setInterval(setBallColor(colors.white), 2000);
+            clearInterval(myInterval4);
+            
+            /*var golInterval3 = setInterval(function () {setBallColor(colors.blue)}, 1000);
+            var golInterval4 = setInterval(function () {setBallColor(colors.white)}, 2000);
+    
+            clearInterval(golInterval3);
+            clearInterval(golInterval4);*/
+        }
+    }
+    
+}
+room.onPositionsReset = function(){
+    /*if(lastTeamTouched == 1){
+        var myInterval1 =  setInterval(room.sendChat("1"), 1000);
+        clearInterval(myInterval1); 
+        var myInterval2 = setInterval(setBallColor(colors.white), 2000);
+        clearInterval(myInterval);
+    }else if(lastTeamTouched == 2){
+        var myInterval3 =  setInterval(setBallColor(colors.blue), 1000);
+        clearInterval(myInterval3); 
+        var myInterval4 = setInterval(setBallColor(colors.white), 2000);
+        clearInterval(myInterval4);
+    }*/
+}
+ 
+room.onTeamVictory = function(scores) {
+    stats[0] += 1;
+    localStorage.setItem(auth, JSON.stringify(stats));
+    var reds = room.getPlayerList().filter(p => p.team == 1);
+    var blues = room.getPlayerList().filter(p => p.team == 2);
+    if(scores.red > scores.blue){
+        reds.forEach(r => gameWinned())
+        blues.forEach(b => gameLosed())
+    }else {
+        blues.forEach(b => gameWinned())
+        reds.forEach(r => gameLosed())
+    }
+    var redGoal = room.getScores().red
+    var blueGoal = room.getScores().blue
+    var scores = room.getScores();
+    if (redGoal > blueGoal) {
+        if(blueGoal == 0){
+            if(redTeam[0] != ""){
+                room.sendAnnouncement("🏆 " + redTeam[0] + " Bir CS tuttu!",null,colors.yellow,'bold',2);
+            }
+        }
+        room.sendAnnouncement("🔴Kırmızı Takım Kazandı🔴",null,colors.red,'bold',2)
+        redStreak = redStreak + 1
+        blueStreak = 0
+        room.sendAnnouncement("🔴Takımın Galibiyet Serisini Okuyun:  " + redStreak,null,colors.white,'bold',2)
+    } else if (blueGoal > redGoal) {
+        if(redGoal == 0){
+            if(blueTeam[0] != ""){
+                room.sendAnnouncement("🏆 " + blueTeam[0] + " Bir CS tuttu!",null,colors.yellow,'bold',2);
+            }   
+        }
+        room.sendAnnouncement("🔵Mavi Takım Kazandı🔵",null,colors.blue,'bold',2)
+        blueStreak = blueStreak + 1
+        redStreak = 0
+        room.sendAnnouncement("🔵Takımın Galibiyet Serisini Okuyun " + blueStreak,null,colors.white,'bold',2)
+    }
+    RecSistem.sendDiscordWebhook(scores);
+    kickOff = false;
+}
+
+function loadMap(map, scoreLim, timeLim) {
+		if (map == trainingMap) {
+			room.setCustomStadium(trainingMap);
+		}
+		else if (map == classicMap) {
+			(classicMap != '') ? room.setCustomStadium(classicMap) : room.setDefaultStadium("classicMap");
+		}
+		else if (map == bigMap) {
+			(bigMap != '.') ? room.setCustomStadium(bigMap) : room.setDefaultStadium("bigMap");
+		}
+		else {
+			room.setCustomStadium(map);
+		}
+		room.setScoreLimit(scoreLim);
+		room.setTimeLimit(timeLim);
+	}
+
+room.onGameStart = function(){
+    if(realMap == true){
+        if(redTeam[0] != "" && blueTeam[0] != ""){
+        room.sendAnnouncement("🥅🔴 " + redTeam[0] + " - " + blueTeam[0] + "🔵🥅")
+        }
+    }
+    lastScores = room.getScores().red + room.getScores().blue;
+    setBallColor(colors.white)
+    if(sendRecWebhookURL != ""){
+        room.startRecording();
+        room.sendAnnouncement("📢Maç kayıtlarını discord sayfamızdan izleyebilirsiniz.",null,colors.red,'bold',2);
+    }
+    //red normal: /colors red 60 FFFFFF FF0800 FF0800 FF0800
+    //blue normal: /colors blue 60 FFFFFF 3C00FF 3C00FF 3C00FF
+    if (redStreak < 3) {
+        room.setTeamColors(1, 60, 0xFFFFFF, [0xFF0800, 0xFF0800, 0xFF0800]);
+    }else if (redStreak == 3) {
+        room.setTeamColors(1, 180, 0xffda26, [0xBC223B, 0x1D397A, 0xBC223B]);
+    } else if (redStreak == 6) {
+        room.setTeamColors(1, 180, 0xF7F7F7, [0xA80617, 0xB60D1F, 0xA80617]);
+    }
+    if (blueStreak < 3) {
+        room.setTeamColors(2, 180, 0xFFFFFF, [0x0082E1, 0x0C161E, 0x0082E1]);
+    } else if (blueStreak == 3) {
+        room.setTeamColors(2, 60, 0xFFFFFF, [0x3C00FF, 0x3C00FF, 0x3C00FF]);
+    } else if (blueStreak == 6) {
+        room.setTeamColors(2, 299, 0xe0e0e0, [0x0C8FEA]);
+    }
+    
+    kickOff = true
+}
+room.onGameStop = function(){
+    if(realMap == true){
+        redTeam = ["","","","","",""];
+        blueTeam = ["","","","","",""];
+    }
+    kickOff = false;
+}
+room.onGameTick = function(){
+    checkBall();
+    checkBallPosition();
+    checkBallPosition2();
+}
+
+room.onGamePause = function(){
+    kickOff = false;
+}
+
+room.onGameUnpause = function(){
+    kickOff = true;
+}
+
+room.onPlayerLeave = function(player){
+    GetPlayer(player.id).inroom = false;
+    //updateAdmins();
+}
+
+room.onPlayerKicked = function(kickedPlayer,reason,ban,byPlayer){
+    if(ban == true){
+        SendBanAnnouncement(byPlayer,kickedPlayer,reason)
+    }
+    if(ban == true){
+        /*var banned = GetPlayer(kickedPlayer.id).auth;
+        banList.push(banned);
+        localStorage.setItem("banlist", JSON.stringify(banList));*/
+        stats = JSON.parse(localStorage.getItem(auth));
+        stats[8] = 1;
+        localStorage.setItem(auth, JSON.stringify(stats));
+
+    }
+    ban == true ? BanListForChat.push([kickedPlayer.name, kickedPlayer.id]) : null;
+    ban == true ? console.log(kickedPlayer.name + " Banlayan " + byPlayer.name + " - Sebep: "+ reason) : console.log(kickedPlayer.name + " Kickleyen " + byPlayer.name + " - Sebep: "+ reason)
+}
+room.onPlayerActivity = function(player) {
+	if(player.team != 0)
+	playersAfk[player.name] = 0;
+}
+
+room.onPlayerTeamChange = function(player){
+    if(player.id == 0){
+        room.setPlayerTeam(player.id,0);
+        room.sendAnnouncement("⚠️Botu Oyuna Alamazsınız",null,colors.yellow,'normal',2);
+    }
+    if(afkPlayerIDs.has(player.id)){
+        room.setPlayerTeam(player.id,0);
+        room.sendAnnouncement("⚠️"+player.name+ " 𝐀𝐅𝐊",null,colors.yellow,'normal',2);
+    }
+    
+}
+
+
+
+
+document.title = roomName;
+
